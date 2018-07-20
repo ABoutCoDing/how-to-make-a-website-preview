@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <style>
+        .hide {
+            display: none;
+        }
+    </style>
+
+    <div class="_category">
+        <button class="_btn_save hide" onclick="_save()">save</button>
+        <ul></ul>
+        <input type="text" class="_c1_maker">
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+    <script>
+        var saved_value = <%- JSON.stringify(r) %>;
+
+        function _init_category() {
+            saved_value.forEach(x => {
+                if (x.c2 == null) {
+                    _insert_c1($("._c1_maker").prev(), x.c1, x.idx)
+                } else {
+                    _insert_c2($("._c2_maker").last().prev(), x.c2, x.idx)
+                }
+            })
+
+            _bind();
+            _sortable();
+        }
+
+        function _save() {
+            saved_value = _get_category();
+            // console.log(JSON.stringify(saved_value));
+
+            // server sending
+            var tm = "|";
+            var ts = "`";
+            var p = tm + saved_value.map(x => Object.values(x).join(ts)).join(tm);
+            axios.post("/", {p, tm, ts});
+            // console.log(p);
+
+            _update_btn_save();
+        }
+
+        function _update_btn_save() {
+            if (JSON.stringify(saved_value) != JSON.stringify(_get_category())) {
+                $("._btn_save").removeClass("hide")
+            } else {
+                $("._btn_save").addClass("hide")
+            }
+        }
+
+        function _get_category() {
+            var z = [];
+
+            var c1 = "";
+            var o1 = 0;
+            var o2 = 0;
+
+            $(".c1, .c2").each(function () {
+                if ($(this).hasClass("c1")) {
+                    c1 = $(this).text();
+                    o2 = 0;
+
+                    z.push({
+                        idx: $(this).attr("idx"),
+                        c1: c1,
+                        c2: null,
+                        o1: ++o1,
+                        o2: null
+                    })
+                } else {
+                    z.push({
+                        idx: $(this).attr("idx"),
+                        c1: c1,
+                        c2: $(this).text(),
+                        o1: o1,
+                        o2: ++o2
+                    })
+                }
+            })
+
+            return z;
+        }
+
+        function _insert_c1(j, v, idx) {
+            j.append(`
+                <li>
+                    <p>
+                        <span class="c1" idx="${idx}">${v}</span>
+                        <input type="text" class="_edit hide">
+                        <button class="_remove">-</button>
+                    </p>
+                    <ul></ul>
+                    <input type="text" class="_c2_maker">
+                </li>
+            `)
+        }
+
+        function _insert_c2(j, v, idx) {
+            j.append(`
+                <li>
+                    <p>
+                        <span class="c2" idx="${idx}">${v}</span>
+                        <input type="text" class="_edit hide">
+                        <button class="_remove">-</button>
+                    </p>
+                </li>
+            `)
+        }
+
+        function _bind() {
+            $("._c2_maker, ._remove, .c1, .c2, ._edit").off();
+
+            $("._c2_maker").keypress(function (e) {
+                if (e.which == 13 && $(this).val()) {
+                    e.preventDefault();
+                    _insert_c2($(this).prev(), $(this).val(), -1);
+                    _bind();
+                    $(this).val("");
+                    _update_btn_save();
+                }
+            })
+
+            $("._remove").click(function () {
+                $(this).parent().parent().remove();
+                _update_btn_save();
+            })
+
+            $(".c1, .c2").dblclick(function () {
+                $(this).addClass("hide");
+                $(this).next().val($(this).text()).removeClass("hide").focus().select();
+            })
+
+            $("._edit").blur(function () {
+                $(this).addClass("hide")
+                $(this).prev().removeClass("hide")
+            })
+
+            $("._edit").keypress(function (e) {
+                if (e.which == 13 && $(this).val()) {
+                    e.preventDefault();
+                    $(this).addClass("hide")
+                    $(this).prev().text($(this).val()).removeClass("hide")
+                    _update_btn_save();
+                }
+            })
+        }
+
+        function _sortable() {
+            $("._category ul").sortable({
+                stop: _update_btn_save
+            })
+        }
+
+        $("._c1_maker").keypress(function (e) {
+            if (e.which == 13 && $(this).val()) {
+                e.preventDefault();
+                _insert_c1($(this).prev(), $(this).val(), -1);
+                _bind();
+                _sortable();
+                $(this).val("");
+                _update_btn_save();
+            }
+        })
+
+        _init_category();
+    </script>
+</body>
+
+</html>
